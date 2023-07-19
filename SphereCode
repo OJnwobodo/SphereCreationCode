@@ -1,0 +1,150 @@
+using UnityEngine;
+using System.Collections.Generic;
+
+public class SphereController : MonoBehaviour
+{
+    public GameObject spherePrefab;
+    public Transform spawnPoint;
+    public float moveSpeed = 5f;
+    public float zoomSpeed = 2f;
+    public float rotationSpeed = 30f;
+
+    private List<GameObject> instantiatedSpheres = new List<GameObject>();
+    private List<GameObject> selectedSpheres = new List<GameObject>();
+
+    private void Start()
+    {
+        spherePrefab = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+    }
+
+    private void Update()
+    {
+        // Move the camera based on arrow key input
+        float horizontal = Input.GetAxis("Horizontal");
+        float vertical = Input.GetAxis("Vertical");
+        Vector3 moveDirection = new Vector3(horizontal, 0f, vertical).normalized;
+        transform.Translate(moveDirection * moveSpeed * Time.deltaTime);
+
+        // Check for mouse click on any instantiated sphere
+        if (Input.GetMouseButtonDown(0))
+        {
+            Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
+            RaycastHit hit;
+            if (Physics.Raycast(ray, out hit))
+            {
+                GameObject clickedSphere = hit.collider.gameObject;
+                if (instantiatedSpheres.Contains(clickedSphere))
+                {
+                    // Check if the clicked sphere is already selected
+                    bool isSelected = selectedSpheres.Contains(clickedSphere);
+
+                    if (isSelected)
+                    {
+                        // Deselect the clicked sphere
+                        selectedSpheres.Remove(clickedSphere);
+                        ChangeSphereColor(clickedSphere, Color.white);
+                    }
+                    else
+                    {
+                        // Check if the maximum number of spheres are already selected (3)
+                        if (selectedSpheres.Count < 3)
+                        {
+                            // Select the clicked sphere
+                            selectedSpheres.Add(clickedSphere);
+                            ChangeSphereColor(clickedSphere, Random.ColorHSV());
+                        }
+                    }
+                }
+            }
+        }
+
+        // Check if any of the selected spheres is being edited
+        bool isAnySelectedSphereEdited = false;
+
+        foreach (GameObject selectedSphere in selectedSpheres)
+        {
+            // Move the selected sphere based on keyboard input (W, S, A, D)
+            float moveHorizontal = Input.GetAxis("Horizontal");
+            float moveVertical = Input.GetAxis("Vertical");
+            Vector3 moveDirection1 = new Vector3(moveHorizontal, 0f, moveVertical).normalized;
+            selectedSphere.transform.Translate(moveDirection1 * moveSpeed * Time.deltaTime);
+
+            // Scale the selected sphere using Q and E keys
+            float scaleInput = Input.GetAxis("Scale");
+            float newScale = Mathf.Clamp(selectedSphere.transform.localScale.x + scaleInput * zoomSpeed * Time.deltaTime, 0.1f, 10f);
+            selectedSphere.transform.localScale = Vector3.one * newScale;
+
+            // Check if any selected sphere is being edited
+            if (moveDirection1 != Vector3.zero || Mathf.Abs(scaleInput) > 0.01f)
+            {
+                isAnySelectedSphereEdited = true;
+            }
+        }
+
+        // If no selected sphere is being edited, allow the last instantiated sphere to be moved and scaled
+        if (!isAnySelectedSphereEdited && instantiatedSpheres.Count > 0)
+        {
+            // Get the last instantiated sphere
+            GameObject lastSphere = instantiatedSpheres[instantiatedSpheres.Count - 1];
+
+            // Move the last instantiated sphere based on keyboard input (W, S, A, D)
+            float zoomInput = Input.GetAxis("Vertical");
+            float lateralInput = Input.GetAxis("Horizontal");
+            Vector3 newPosition = lastSphere.transform.position;
+            newPosition += transform.forward * zoomInput * zoomSpeed * Time.deltaTime;
+            newPosition += transform.right * lateralInput * moveSpeed * Time.deltaTime;
+            lastSphere.transform.position = newPosition;
+
+            // Scale the last instantiated sphere using Q and E keys
+            float scaleInput = Input.GetAxis("Scale");
+            float newScale = Mathf.Clamp(lastSphere.transform.localScale.x + scaleInput * zoomSpeed * Time.deltaTime, 0.1f, 10f);
+            lastSphere.transform.localScale = Vector3.one * newScale;
+        }
+
+        // Instantiate a new sphere when the "Enter" key is pressed
+        if (Input.GetKeyDown(KeyCode.Return))
+        {
+            InstantiateSphereAtSpawnPoint();
+        }
+    }
+
+    private void InstantiateSphereAtSpawnPoint()
+    {
+        if (selectedSpheres.Count >= 3)
+        {
+            Debug.Log("Cannot create more than 3 selected spheres.");
+            return;
+        }
+
+        GameObject newSphere = Instantiate(spherePrefab, spawnPoint.position, Quaternion.identity);
+        instantiatedSpheres.Add(newSphere);
+
+        // Save the positions of all instantiated spheres to PlayerPrefs
+        SaveSpherePositions();
+    }
+
+    private void SaveSpherePositions()
+    {
+        List<Vector3> positions = new List<Vector3>();
+        foreach (GameObject sphere in instantiatedSpheres)
+        {
+            positions.Add(sphere.transform.position);
+        }
+
+        // Convert the List<Vector3> to a serializable string
+        string positionsString = string.Join(",", positions);
+
+        // Save the positions string to PlayerPrefs
+        PlayerPrefs.SetString("SpherePositions", positionsString);
+
+        // Save PlayerPrefs to disk
+        PlayerPrefs.Save();
+    }
+
+    private void ChangeSphereColor(GameObject sphere, Color color)
+    {
+        // Change the color of the sphere
+        Renderer sphereRenderer = sphere.GetComponent<Renderer>();
+        sphereRenderer.material.color = color;
+    }
+}
