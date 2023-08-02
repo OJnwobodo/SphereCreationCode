@@ -1,0 +1,71 @@
+using UnityEngine;
+using Microsoft.MixedReality.Toolkit.Input;
+
+
+
+public class GazeInteraction : MonoBehaviour
+{
+    public GameObject sphere; // Reference to the sphere GameObject in the scene
+    public GameObject hiddenObject; // Reference to the hidden object (e.g., a cube) in the scene
+
+    private bool isHidden;
+
+    void Start()
+    {
+        isHidden = true;
+        hiddenObject.SetActive(false);
+    }
+
+    void Update()
+    {
+        // Check for mouse click (for non-MRTK platforms)
+        if (Input.GetMouseButtonDown(0))
+        {
+            Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
+            HandleInteraction(ray);
+        }
+
+        // Check for gaze-based interaction (for MRTK platforms)
+        if (IsGazeAvailable())
+        {
+            Vector3 gazeOrigin;
+            Vector3 gazeDirection;
+            if (TryGetEyeGazeProvider(out var eyeGazeProvider))
+            {
+                gazeOrigin = eyeGazeProvider.GazeOrigin;
+                gazeDirection = eyeGazeProvider.GazeDirection;
+            }
+            else
+            {
+                // Fallback to main camera if eye gaze provider is not available
+                gazeOrigin = Camera.main.transform.position;
+                gazeDirection = Camera.main.transform.forward;
+            }
+
+            Ray ray = new Ray(gazeOrigin, gazeDirection);
+            HandleInteraction(ray);
+        }
+    }
+
+    private void HandleInteraction(Ray ray)
+    {
+        // Perform raycast to check for intersection with the sphere
+        if (Physics.Raycast(ray, out RaycastHit hit) && hit.collider.gameObject == sphere)
+        {
+            // Toggle the hidden object's visibility when the sphere is interacted with
+            isHidden = !isHidden;
+            hiddenObject.SetActive(isHidden);
+        }
+    }
+
+    private bool IsGazeAvailable()
+    {
+        return TryGetEyeGazeProvider(out var _);
+    }
+
+    private bool TryGetEyeGazeProvider(out IMixedRealityEyeGazeProvider eyeGazeProvider)
+    {
+        eyeGazeProvider = Microsoft.MixedReality.Toolkit.MixedRealityToolkit.InputSystem?.EyeGazeProvider;
+        return eyeGazeProvider != null;
+    }
+}
