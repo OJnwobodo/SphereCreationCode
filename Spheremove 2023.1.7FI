@@ -1,0 +1,258 @@
+using UnityEngine;
+using Microsoft.MixedReality.Toolkit.Input;
+using Microsoft.MixedReality.Toolkit.UI;
+using System.Collections.Generic;
+using System.Collections;
+using UnityEngine.XR.WSA.Input;
+using UnityEngine.InputSystem;
+
+
+public class SphereMove : MonoBehaviour
+{
+    public float moveSpeed = 10f;
+    public GameObject SpherePrefab;
+    private List<GameObject> instantiatedSpheres = new List<GameObject>();
+    private GameObject lastSelectedSphere;
+    private Color originalColor;
+
+
+    public void CreateSphere()
+    {
+        // Get the main camera in the scene
+        Camera mainCamera = Camera.main;
+
+        // Calculate the position for the new sphere, 2 units away from the camera along its forward vector
+        Vector3 spawnPosition = mainCamera.transform.position + mainCamera.transform.forward * 5f;
+
+        // Instantiate the sphere at the calculated position
+        GameObject newSphere = Instantiate(SpherePrefab, spawnPosition, Quaternion.identity);
+
+        // Add the ManipulationHandler component to the newly created sphere
+        newSphere.AddComponent<ManipulationHandler>();
+
+
+        // Add the newly created sphere to the list
+        instantiatedSpheres.Add(newSphere);
+
+
+        Debug.Log("Sphere created");
+    }
+
+    void Start()
+    {
+        SpherePrefab = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+
+    }
+
+    // Update is called once per frame
+    void Update()
+    {
+        // Check if the HoloLens 2 pointer is down
+        if (Mouse.current.leftButton.wasPressedThisFrame)
+        {
+            // Raycast from the camera to find selected sphere
+            RaycastHit hit;
+            Camera mainCamera = Camera.main;
+            Ray ray = mainCamera.ScreenPointToRay(new Vector3(Screen.width / 2f, Screen.height / 2f));
+
+            // Check if the raycast hits any GameObject
+            if (Physics.Raycast(ray, out hit))
+            {
+                GameObject selectedSphere = hit.collider.gameObject;
+                if (instantiatedSpheres.Contains(selectedSphere))
+                {
+                    // Deselect previous sphere (if any) and select the new one
+                    DeselectLastSelectedSphere();
+                    lastSelectedSphere = selectedSphere;
+                    SetSelectedColor(lastSelectedSphere);
+
+                    // Enable manipulation on the selected sphere
+                    ManipulationHandler manipulationHandler = lastSelectedSphere.GetComponent<ManipulationHandler>();
+                    if (manipulationHandler != null)
+                        manipulationHandler.enabled = true;
+                }
+            }
+        }
+
+        // Handle selected sphere manipulation using pressable buttons
+        if (lastSelectedSphere != null && lastSelectedSphere.GetComponent<ManipulationHandler>().enabled)
+        {
+            // Check for button press to move the last selected sphere
+            if (Keyboard.current.upArrowKey.wasPressedThisFrame)
+            {
+                MoveUp();
+            }
+
+            // Check for button press to zoom in on the last selected sphere
+            if (Keyboard.current.iKey.wasPressedThisFrame)
+            {
+                ZoomIn();
+            }
+
+            // Check for button press to zoom out from the last selected sphere
+            if (Keyboard.current.oKey.wasPressedThisFrame)
+            {
+                ZoomOut();
+            }
+        }
+    }
+
+    public void MoveLeft()
+    {
+        Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
+        RaycastHit hit;
+        if (Physics.Raycast(ray, out hit))
+        {
+            // Check if there are any spheres in the list
+            GameObject clickedSphere = hit.collider.gameObject;
+        }
+        if (instantiatedSpheres.Count > 0)
+        {
+            // Get the last instantiated sphere from the list
+            GameObject lastSphere = instantiatedSpheres[instantiatedSpheres.Count - 1];
+            lastSphere.transform.Translate(Vector3.left * moveSpeed * Time.deltaTime);
+        }
+        if (lastSelectedSphere != null)
+        {
+            lastSelectedSphere.transform.Translate(Vector3.left * moveSpeed * Time.deltaTime);
+        }
+    }
+
+
+    public void MoveRight()
+    {
+        if (instantiatedSpheres.Count > 0)
+        {
+            GameObject lastSphere = instantiatedSpheres[instantiatedSpheres.Count - 1];
+            lastSphere.transform.Translate(Vector3.right * moveSpeed * Time.deltaTime);
+        }
+        if (lastSelectedSphere != null)
+        {
+            lastSelectedSphere.transform.Translate(Vector3.right * moveSpeed * Time.deltaTime);
+        }
+    }
+    public void MoveUp()
+    {
+        if (instantiatedSpheres.Count > 0)
+        {
+            GameObject lastSphere = instantiatedSpheres[instantiatedSpheres.Count - 1];
+            lastSphere.transform.Translate(Vector3.up * moveSpeed * Time.deltaTime);
+        }
+        if (lastSelectedSphere != null)
+        {
+            lastSelectedSphere.transform.Translate(Vector3.up * moveSpeed * Time.deltaTime);
+        }
+    }
+
+    public void MoveDown()
+    {
+        if (instantiatedSpheres.Count > 0)
+        {
+            GameObject lastSphere = instantiatedSpheres[instantiatedSpheres.Count - 1];
+            lastSphere.transform.Translate(Vector3.down * moveSpeed * Time.deltaTime);
+        }
+        if (lastSelectedSphere != null)
+        {
+            lastSelectedSphere.transform.Translate(Vector3.down * moveSpeed * Time.deltaTime);
+        }
+    }
+    public void ZoomIn()
+    {
+        if (instantiatedSpheres.Count > 0)
+        {
+            GameObject lastSphere = instantiatedSpheres[instantiatedSpheres.Count - 1];
+            Vector3 newScale = lastSphere.transform.localScale * 1.1f; // Increase the scale by 10%
+            lastSphere.transform.localScale = newScale;
+        }
+        if (lastSelectedSphere != null)
+        {
+            // You can adjust the zoom amount as needed by multiplying the scale change
+            float zoomAmount = 1.1f; // Increase the scale by 10%
+
+            // Scale the last selected sphere by the zoom amount
+            lastSelectedSphere.transform.localScale *= zoomAmount;
+        }
+
+    }
+
+    public void ZoomOut()
+    {
+        if (instantiatedSpheres.Count > 0)
+        {
+            GameObject lastSphere = instantiatedSpheres[instantiatedSpheres.Count - 1];
+            Vector3 newScale = lastSphere.transform.localScale * 0.9f; // Decrease the scale by 10%
+            lastSphere.transform.localScale = newScale;
+        }
+        if (lastSelectedSphere != null)
+        {
+            // You can adjust the zoom amount as needed by multiplying the scale change
+            float zoomAmount = 0.9f; // Decrease the scale by 10%
+
+            // Scale the last selected sphere by the zoom amount
+            lastSelectedSphere.transform.localScale *= zoomAmount;
+        }
+    }
+    public void SelectSphere(GameObject sphere)
+    {
+        // Deselect the previous last selected sphere, if any
+        DeselectLastSelectedSphere();
+
+        // Select the new sphere
+        lastSelectedSphere = sphere;
+
+        // Store the original color to restore it when deselected
+        originalColor = lastSelectedSphere.GetComponent<Renderer>().material.color;
+
+    }
+    public void selectedSphere(GameObject sphere)
+    {
+        // Deselect the previous last selected sphere, if any
+        DeselectLastSelectedSphere();
+
+        // Select the new sphere
+        lastSelectedSphere = sphere;
+
+        // Store the original color to restore it when deselected
+        originalColor = lastSelectedSphere.GetComponent<Renderer>().material.color;
+
+        // Change the color of the selected sphere
+        SetSelectedColor(lastSelectedSphere);
+
+        // Enable manipulation on the selected sphere
+        ManipulationHandler manipulationHandler = lastSelectedSphere.GetComponent<ManipulationHandler>();
+        if (manipulationHandler != null)
+            manipulationHandler.enabled = true;
+    }
+    private void SetSelectedColor(GameObject sphere)
+    {
+        Renderer renderer = sphere.GetComponent<Renderer>();
+        if (renderer != null)
+        {
+            // Store the original material color to restore it when deselected
+            if (originalColor == Color.clear)
+                originalColor = renderer.material.color;
+
+            // Generate a random color with random RGB values
+            Color selectedColor = new Color(Random.value, Random.value, Random.value);
+
+            renderer.material.color = selectedColor;
+        }
+    }
+
+    public void DeselectLastSelectedSphere()
+    {
+        if (lastSelectedSphere != null)
+        {
+            // Restore the original color of the deselected sphere
+            lastSelectedSphere.GetComponent<Renderer>().material.color = originalColor;
+
+            // Disable manipulation on the deselected sphere
+            ManipulationHandler manipulationHandler = lastSelectedSphere.GetComponent<ManipulationHandler>();
+            if (manipulationHandler != null)
+                manipulationHandler.enabled = false;
+
+            // Clear the last selected sphere reference
+            lastSelectedSphere = null;
+        }
+    }
+}
