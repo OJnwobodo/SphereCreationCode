@@ -1,0 +1,23 @@
+using UnityEngine;
+using UnityEditor;
+
+public class PlayerPrefsEditor : EditorWindow
+{
+    [MenuItem("Window/PlayerPrefs Viewer")]
+    public static void ShowWindow()
+    {
+        PlayerPrefsEditor window = GetWindow<PlayerPrefsEditor>("PlayerPrefs Viewer");
+        window.Show();
+    }
+
+    private void OnGUI()
+    {
+        GUILayout.Label("PlayerPrefs Viewer", EditorStyles.boldLabel);
+
+        if (GUILayout.Button("Show Saved Sphere Positions"))
+        {
+            string positionsString = PlayerPrefs.GetString("SpherePositions", "");
+            EditorUtility.DisplayDialog("Saved Sphere Positions", positionsString, "OK");
+        }
+    }
+}
